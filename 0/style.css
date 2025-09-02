@@ -58,7 +58,7 @@ li {
 img.example {
   display: block;
   margin: 1em auto;
-  max-width: 80%;
+  max-width: 50%;
 }
 
 iframe {
