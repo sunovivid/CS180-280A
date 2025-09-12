@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 0</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1> Project 1: Images of the Russian Empire:
+        Colorizing the Prokudin-Gorskii photo collection
+         </h1>
+    <p> In this project, we want to colorize the Prokudin-Gorskii photo collection, which is taken in red, green, and blue filters.
+    
+    <h2> Gallery </h2>
+    <p> See the beautifully reconstructed example images! </p>
+    </p>
+    <img src="media/examples/cathedral.jpg" alt="Part 1" class="example">
+    <img src="media/examples/church.jpg" alt="Part 1" class="example">
+    <img src="media/examples/emir.jpg" alt="Part 1" class="example">
+    <img src="media/examples/harvesters.jpg" alt="Part 1" class="example">
+    <img src="media/examples/icon.jpg" alt="Part 1" class="example">
+    <img src="media/examples/italil.jpg" alt="Part 1" class="example">
+    <img src="media/examples/lastochikino.jpg" alt="Part 1" class="example">
+    <img src="media/examples/lugano.jpg" alt="Part 1" class="example">
+    <img src="media/examples/melons.jpg" alt="Part 1" class="example">
+    <img src="media/examples/monastery.jpg" alt="Part 1" class="example">
+    <img src="media/examples/self_portrait.jpg" alt="Part 1" class="example">
+    <img src="media/examples/siren.jpg" alt="Part 1" class="example">
+    <img src="media/examples/three_generations.jpg" alt="Part 1" class="example">
+    <img src="media/examples/tobolsk.jpg" alt="Part 1" class="example">
+
+    <h3> More images from the collection </h3>
+    <img src="media/more_examples/master-pnp-prok-00100-00116u.jpg" alt="Part 1" class="example">
+    <img src="media/more_examples/master-pnp-prok-00100-00128u.jpg" alt="Part 1" class="example">
+    <img src="media/more_examples/master-pnp-prok-00200-00206u.jpg" alt="Part 1" class="example">
+    <img src="media/more_examples/master-pnp-prok-00300-00341u.jpg" alt="Part 1" class="example">
+    <img src="media/more_examples/master-pnp-prok-00300-00351u.jpg" alt="Part 1" class="example">
+
+    <h2> Bells and Whistles </h2>
+    <p> Here are some bells and whistles that I added to the project. </p>
+    <h4> Automatic cropping </h4>
+    The original images contain some white, black borders. I removed them by computing mean color of border lines starting from the outside of the image and stopping when the color is too different from specified color.
+    <img src="media/bells_and_whistles/auto_crop.png" alt="Part 3" class="example3"">
+    <h4> Automatic contrasting </h4>
+    I rescaled the image so that the the darkest pixel is zero and the brightest pixel is one.
+    <img src="media/bells_and_whistles/auto_contrast.png" alt="Part 3" class="example3"">
+    <h4> Automatic white balance </h4>
+    I computed the average color of the image and shifted the image so that the average color is gray.
+    <img src="media/bells_and_whistles/auto_white_balance.png" alt="Part 3" class="example3"">
+    <h4> Better color mapping </h4>
+    I mapped the color channels to the RGB channels based on heuristics. The original image has good color balance thanks to the automatic white balance, so I intentionally selected some different colors to perform the mapping.
+    <img src="media/bells_and_whistles/better_colormap.png" alt="Part 3" class="example3"">
+    <h4> Better features </h4>
+    I used the magnitude of gradients of the image to align the images.
+    <img src="media/bells_and_whistles/better_features.png" alt="Part 3" class="example3"">
+</body>
+
+</html>
