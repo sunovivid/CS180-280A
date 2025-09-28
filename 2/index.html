@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 2: Filters and Edges</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- MathJax for mathematical formula rendering -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+    <h1> Project 2: Filters and Edges </h1>
+    <p> This project explores various image filtering techniques, edge detection methods, and their applications in computer vision. We implement convolution operations, edge detection algorithms, and create hybrid images using frequency domain techniques.
+    
+    <h2> Part 1: Filters and Edges </h2>
+    
+    <h3> Part 1.1: Convolution Implementation </h3>
+    <p> Implementation of convolution using numpy only, with comparison to scipy.signal.convolve2d. Analysis of runtime performance and boundary handling methods. </p>
+    <img src="media/part1/conv_comparison.png" alt="Convolution Comparison" class="example3">
+    <p> <strong>Runtime Analysis:</strong> [4 for statement] 1.420s, [2 for statement] 0.241s, [scipy] 0.074s </p>
+    <p> <strong>Boundary Handling:</strong> I used zero padding to handle the boundary of the image.
+         The default boundary handling method of scipy.signal.convolve2d is 'full', 
+         which means the output image is larger than the input image, 
+         whereas my implementation corresponds to 'same' which means the output image is the same size as the input image.
+         Also, it use zero padding by default. </p>
+    
+    <h3> Part 1.2: Edge Detection </h3>
+    <p> Computation of partial derivatives in x and y directions, gradient magnitude, and binarized edge images. </p>
+    <h4> Partial Derivatives </h4>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+            <h5> Partial Derivative X </h5>
+            <img src="media/part1/partial_x.png" alt="Partial Derivative X" class="example3">
+        </div>
+        <div>
+            <h5> Partial Derivative Y </h5>
+            <img src="media/part1/partial_y.png" alt="Partial Derivative Y" class="example3">
+        </div>
+        <div>
+            <h5> Gradient Magnitude </h5>
+            <img src="media/part1/magnitude.png" alt="Gradient Magnitude" class="example3">
+        </div>
+    </div>
+    <h4> Selecting Threshold </h4>
+    </div>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+            <h5> Threshold 40/255 </h5>
+            <img src="media/part1/thres40.png" alt="Binarized Edges" class="example3">
+        </div>
+        <div>
+            <h5> Threshold 60/255 </h5>
+            <img src="media/part1/thres60.png" alt="Binarized Edges" class="example3">
+        </div>
+        <div>
+            <h5> Threshold 80/255 </h5>
+            <img src="media/part1/thres80.png" alt="Binarized Edges" class="example3">
+        </div>
+    </div>
+    <p> <strong>Threshold Choice Justification:</strong> I used the threshold 40/255, 60/255, and 80/255 to binarize the edge image.
+         The threshold 40/255 shows too many artifacts.
+         The threshold 80/255 shows disconnected edges.
+         The threshold 60/255 shows good edges. So I chose the threshold 60/255.
+    </p>
+    
+    <h3> Part 1.3: Gaussian and DoG Filters </h3>
+    <p> Construction of Gaussian filters using cv2.getGaussianKernel, building DoG filters, and comparison with finite difference methods. </p>
+    <h4> Gaussian Filter Visualization </h4>
+    <img src="media/part1/gaussian_filter.png" alt="Gaussian Filter" class="example3">
+    <h4> DoG Filter Visualization </h4>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+            <h5> DoG Filter (y direction) </h5>
+            <img src="media/part1/dog_filter_y.png" alt="DoG Filter" class="example3">
+        </div>
+        <div>
+            <h5> DoG Filter (x direction) </h5>
+            <img src="media/part1/dog_filter_x.png" alt="DoG Filter" class="example3">
+        </div>
+    </div>
+    <h4> Results on Cameraman Image </h4>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+            <h5> Image after Gaussian Smoothing </h5>
+            <img src="media/part1/gaussian_smoothing.png" alt="Gaussian Smoothing" class="example3">
+        </div>
+        <div>
+            <h5> Edges from Gaussian Filter </h5>
+            <img src="media/part1/gaussian_smoothing_edges.png" alt="Gaussian Smoothing" class="example3">
+        </div>
+        <div>
+            <h5> Edges from DoG Filter (same!) </h5>
+            <img src="media/part1/dog_edges.png" alt="DoG Filter" class="example3">
+        </div>
+        <div>
+            <h5> Edges from Finite Difference </h5>
+            <img src="media/part1/binary_map.png" alt="Finite Difference" class="example3">
+        </div>
+    </div>
+    <p> <strong>Comparison:</strong> The edges from finite difference method shows some noisy edges.
+         The edges from the Gaussian filter are smoother.
+         The edges from the DoG filter are same as the edges from the Gaussian filter.
+    </p>
+    
+    <h3> Part 1 Bells and Whistles: Gradient Orientations </h3>
+    <p> Computation and visualization of gradient orientations for the cameraman image without using built-in angle functions. </p>
+    <img src="media/part1/gradient_orientation.png" alt="Gradient Orientations" class="example3">
+    <p4> Implementation </p4>
+    <img src="media/part1/gradient_impl.png" alt="Gradient Implementation" class="example">
+    <p> <strong>Process Explanation:</strong> I computed the gradient orientation by using `arctan2(grad_y, grad_x)` to compute the angle of the gradient from the partial derivatives.
+         I then normalized the gradient orientation to the range [0, 1] by using `(orientation + np.pi) / (2 * np.pi)`.
+         I then visualized the gradient orientation by using the formula `hue = (orientation + np.pi) / (2 * np.pi)`, `value = magnitude / magnitude.max()`, and `hsv_to_rgb(hsv)`.
+    </p>
+    
+    <h2> Part 2: Applications </h2>
+    
+    <h3> Part 2.1: Unsharp Mask Filter </h3>
+    <p> Implementation of the unsharp mask filter and analysis of its relationship to blur filters and high frequencies. </p>
+    <h4> How Unsharp Mask Works </h4>
+    <h5> Naive Implementation </h5>
+    <img src="media/part2/sharpening1.png" alt="Naive Implementation" class="example">
+    <h5> Unsharp Mask Filter Implementation </h5>
+    <img src="media/part2/sharpening2.png" alt="Gaussian Blur Implementation" class="example">
+    <p> <strong>Explanation:</strong> The first naive implementation is just subtracting the blurred image from the original image to get the high frequency component of the image, and then adding it back to the original image to get the sharpened image.
+         The second implementation is using the unsharp mask filter by directly using linear combination of Gaussian filter and the identity filter, which is basically the same as the naive implementation using linearity of convolution, but it is more efficient.
+    </p>
+    <h4> Taj Mahal Results </h4>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+            <h5> Original </h5>
+            <img src="media/part2/original_taj.png" alt="Original Taj Mahal" class="example3">
+        </div>
+        <div>
+            <h5> Blurred </h5>
+            <img src="media/part2/blurred_taj.png" alt="Blurred Taj Mahal" class="example3">
+        </div>
+        <div>
+            <h5> High Frequency </h5>
+            <img src="media/part2/high_freq_taj.png" alt="High Frequency Taj Mahal" class="example3">
+        </div>
+        <div>
+            <h5> Sharpened </h5>
+            <img src="media/part2/sharpen_taj.png" alt="Sharpened Taj Mahal" class="example3">
+        </div>
+    </div>
+
+    <h4> Custom Image Results </h4>
+    <h5> Original </h5>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+            <h5> Original </h5>
+            <img src="media/part2/cat_original.png" alt="Original Custom" class="example3">
+        </div>
+        <div>
+            <h5> Blurred </h5>
+            <img src="media/part2/cat_blurred.png" alt="Blurred Custom" class="example3">
+        </div>
+        <div>
+            <h5> High Frequency </h5>
+            <img src="media/part2/cat_detail.png" alt="High Frequency Custom" class="example3">
+        </div>
+        <div>
+            <h5> Sharpened </h5>
+            <img src="media/part2/cat_sharpen.png" alt="Sharpened Custom" class="example3">
+        </div>
+    </div>
+    <h4> Varying Sharpening Amount </h4>
+    <img src="media/part2/alpha.png" alt="Sharpening Variations" class="example3">
+    <p> If we increase the sharpening amount (alpha), the edges become more pronounced.
+         But if we increase it too much, the edges become too sharp and look unnatural.
+    </p>
+    <h3> Part 2.2: Hybrid Images </h3>
+    <p> Creation of three hybrid images using frequency domain techniques. </p>
+    <h4> Happy? Sad?  </h4>
+    <img src="media/part2/happysad_originals.jpg" alt="Happy and Sad Original" class="example3">
+    <p> <b> [Happy image / Sad image / Hybrid image]</b> <br>
+        If you see this image from a distance, you will see a happy face.
+        But if you look closely, you will see a sad face.
+    </p>
+    <h4> Fourier Transforms </h4>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+        <h5> Before Filtering </h5>
+        <img src="media/part2/happysad_freq_after_filtering.jpg" alt="Happy and Sad FFT" class="example3">
+        </div>
+        <div>
+        <h5> After Filtering </h5>
+        <img src="media/part2/happysad_freq_before_filtering.jpg" alt="Happy and Sad FFT" class="example3">
+        </div>
+    </div>
+    <p> I used sigma1=5, sigma2=5 as the cutoff frequencies for the high-frequency and low-frequency components. It provides a good balance between overall structure of happy face and details of sad face. </p>
+    <h4> Filtered Results </h4>
+    <img src="media/part2/TF.jpg" alt="Happy and Sad Filtered" class="example3">
+    
+    <h4> Additional Hybrid Images </h4>
+    <img src="media/part2/DerekPicture_nutmeg_originals_and_hybrid.jpg" alt="Derek Original" class="example3">
+    <img src="media/part2/skull_fruits.jpg" alt="Skull and Fruits" class="example3">
+
+    <h3> Part 2.2 Bells and Whistles: color perception </h3>
+    <p> <b> [Question] </b> Try using color to enhance the effect. Does it work better to use color for the high-frequency component, the low-frequency component, or both?    </p>
+    <p> <b> [Answer] </b> I tested all three cases. </p>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+        <h5> Color for High-Frequency Component </h5>
+        <img src="media/part2/FT.jpg" alt="Advanced Hybrid" class="example3">
+        </div>
+        <div>
+        <h5> Color for Low-Frequency Component </h5>
+        <img src="media/part2/TF.jpg" alt="Advanced Hybrid" class="example3">
+        </div>
+        <div>
+        <h5> Color for Both High-Frequency and Low-Frequency Component </h5>
+        <img src="media/part2/TT.jpg" alt="Advanced Hybrid" class="example3">
+        </div>
+    </div>
+    <p> It works better to use color for the low-frequency component.
+        It seems a color itself affects the perception of the overall structure of the image, thus using color for the high-frequency component hinder the perception of the low-frequency component.
+    </p>
+    
+    <h3> Part 2.3: Gaussian and Laplacian Stacks </h3>
+    <p> Visualization of Gaussian and Laplacian stacks for Orange + Apple images, recreating Figure 3.42 outcomes. </p>
+    <h4> Gaussian Stack </h4>
+    <img src="media/part2/gaussian_stacks.png" alt="Gaussian Stack" class="example3">
+    <h4> Laplacian Stack </h4>
+    <img src="media/part2/laplacian_stacks.png" alt="Laplacian Stack" class="example3">
+    <h4> Figure 3.42 Recreation </h4>
+    <img src="media/part2/fig342.png" alt="Figure 3.42 Recreation" class="example3">
+
+    <h3> Part 2.4: Custom Blended Images </h3>
+    <p> Creation of two additional custom blended images, including one with an irregular mask. </p>
+
+
+    <h4> Blended Image 2 (Regular Mask) </h4>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+        <h5> Day </h5>
+        <img src="media/part2/day.png" alt="Blend 2 Original 1" class="example3">
+        </div>
+        <div>
+        <h5> Sunset </h5>
+        <img src="media/part2/night.jpg" alt="Blend 2 Original 1" class="example3">
+        </div>
+        <div>
+        <h5> The mask! </h5>
+        <img src="media/part2/horizon_mask.png" alt="Blend 2 Original 1" class="example3">
+        </div>
+        <div>
+        <h5> The blended image </h5>
+        <img src="media/part2/daysunset.png" alt="Blend 2 Original 1" class="example3">
+        </div>
+    </div>
+
+    <h4> Blended Image 1 (Irregular Mask) </h4>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+        <h5> Shark </h5>
+        <img src="media/part2/shark.jpg" alt="Blend 1 Original 1" class="example3">
+        </div>
+        <div>
+        <h5> Zebra </h5>
+        <img src="media/part2/zebra.jpg" alt="Blend 1 Original 1" class="example3">
+        </div>
+        <div>
+        <h5> The mask! </h5>
+        <img src="media/part2/shark_mask.png" alt="Blend 1 Mask" class="example3">
+        </div>
+        <div>
+        <h5> The blended image! </h5>
+        <img src="media/part2/sharkzebra.png" alt="Blend 1 Original 1" class="example3">
+        </div>
+    </div>
+
+    <h3> Part 2.4 Bells and Whistles: Advanced Blending </h3>
+    <p> To achieve more smooth transition of color and texture, I tried blending in HSV space, with more smooth transition (using more gaussian stacks) in the Hue channel and the value channel, leaving the saturation channel as is.</p>
+    <div class="flex-container" style="display: flex; text-align: center; justify-content: center;">
+        <div>
+            <h5> Interpolated Hue </h5>
+            <img src="media/part2/h.png" alt="Hue" class="example3">
+        </div>
+        <div>
+            <h5> Interpolated Saturation </h5>
+            <img src="media/part2/s.png" alt="Saturation" class="example3">
+        </div>
+        <div>
+            <h5> Interpolated Value </h5>
+            <img src="media/part2/v.png" alt="Value" class="example3">
+        </div>
+        <div>
+            <h5> Blended (smoother transition!) </h5>
+            <img src="media/part2/hsv.png" alt="Blended" class="example3">
+        </div>
+        <div>
+            <h5> Original </h5>
+            <img src="media/part2/original.png" alt="Original" class="example3">
+        </div>
+    </div>
+    <img src="media/part2/advanced_blending.png" alt="Advanced Blending" class="example3">
+    
+    <div>
+        <h4> What I learned in this project </h4>
+        <p> I spent a lot of time to debug the code.
+            I encontered many weired bugs, and one of the bugs that took me a lot of time to debug was that the boundary of the masking in blending changes along with the depth of the gaussian stack.
+            After many trials and errors, I found that it was because the kernel size in the gaussian stack changes was even number, so the boundary of the masking changes slightly along with the depth of the gaussian stack.
+            I learned the power of visualizing every component of the code.
+            This project was challenging and exciting, and I really enjoyed it!
+        </p>
+    </div>
+</body>
+
+</html>
