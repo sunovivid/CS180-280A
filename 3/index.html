@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 3: Image Warping and Mosaicing</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- MathJax for mathematical formula rendering -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+    <h1> Project 3: IMAGE WARPING and MOSAICING </h1>
+    <p> This project explores image warping and mosaicing techniques. I implement image warping and mosaicing techniques.
+    <h2> A.1: Shoot the Pictures </h2>
+    <p> Deliverables: Show at least 2 sets of images with projective transformations between them (fixed center of projection, rotate camera). </p>
+
+    <h3>Image Set 1: Kitchen</h3>
+    <div class="image-row">
+        <div class="image-container">
+            <img src="media/A1/1-1.jpeg" alt="Kitchen left image">
+            <p>Left image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/1-2.jpeg" alt="Kitchen middle image">
+            <p>Middle image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/1-3.jpeg" alt="Kitchen right image">
+            <p>Right image</p>
+        </div>
+    </div>
+    <p class="caption">Kitchen image set with projective transformations (fixed center of projection, rotated camera)</p>
+
+    <h3>Image Set 2: Soda Hall 7th Floor</h3>
+    <div class="image-row">
+        <div class="image-container">
+            <img src="media/A1/2-1.jpeg" alt="Soda Hall left image">
+            <p>Left image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/2-2.jpeg" alt="Soda Hall middle image">
+            <p>Middle image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/2-3.jpeg" alt="Soda Hall right image">
+            <p>Right image</p>
+        </div>
+    </div>
+    <p class="caption">Soda Hall 7th Floor image set with projective transformations (fixed center of projection, rotated camera)</p>
+
+    <h3>Image Set 3: BAIR</h3>
+    <div class="image-row">
+        <div class="image-container">
+            <img src="media/A1/bair-1.jpeg" alt="BAIR left image">
+            <p>Left image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/bair-2.jpeg" alt="BAIR middle image">
+            <p>Middle image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/bair-3.jpeg" alt="BAIR right image">
+            <p>Right image</p>
+        </div>
+    </div>
+    <p class="caption">BAIR image set with projective transformations (fixed center of projection, rotated camera)</p>
+
+    <h2> A.2: Recover Homographies </h2>
+    <p>Before warping images into alignment, I need to recover the homography transformation parameters between each pair of images. A homography is defined as p' = Hp, where H is a 3×3 matrix with 8 degrees of freedom (the lower right corner is set to 1 as a scaling factor).</p>
+
+    <h3>Implementation</h3>
+    <img src="media/A2/computeH.png" alt="Compute H" style="width: 50%; display: block; margin: 0.5em auto;">
+    <p>I implemented the <code>computeH(im1_pts, im2_pts)</code> function that takes n-by-2 matrices of corresponding point locations and returns the recovered 3×3 homography matrix H. The function sets up a linear system Ah = b where h contains the 8 unknown entries of H. Since using only 4 points makes the homography recovery unstable, I use more than 4 correspondences to create an overdetermined system, which is solved using least-squares.</p>
+
+    <h3>Point Correspondences</h3>
+    <p>I established point correspondences using matplotlib's ginput function to manually select matching points between image pairs. Below are the visualized correspondences for each image set:</p>
+
+    <h4>Correspondences</h4>
+    <div>
+        <img src="media/A2/corr1.png" alt="Correspondences 1" style="width: 60%; display: block; margin: 1em auto;">
+        <p>Correspondences 1</p>
+    </div>
+
+    <h3>System of Equations</h3>
+    <p>For each pair of corresponding points $(x_1, y_1) \rightarrow (x_2, y_2)$, I construct two equations:</p>
+    <p>$$ \begin{bmatrix} x_1 & y_1 & 1 & 0 & 0 & 0 & -x_2x_1 & -x_2y_1 \\ 0 & 0 & 0 & x_1 & y_1 & 1 & -y_2x_1 & -y_2y_1 \end{bmatrix} \begin{bmatrix} h_{11} \\ h_{12} \\ h_{13} \\ h_{21} \\ h_{22} \\ h_{23} \\ h_{31} \\ h_{32} \end{bmatrix} = \begin{bmatrix} x_2 \\ y_2 \end{bmatrix} $$</p>
+    <p>With n point correspondences, this creates a 2n × 8 system that is solved using least-squares to find the optimal h vector, which is then reshaped into the 3×3 homography matrix.</p>
+
+    <h3>Recovered Homography Matrices</h3>
+    <h4>Homography Matrix of Soda Hall 7th Floor (Image 1 → Image 2)</h4>
+    <pre><code>H (Image 1 → Image 2):
+[[2.132   -0.019  -451.82]
+ [0.256    1.686   -88.32]
+ [0.002   -0.000    1.00]]
+</code></pre>
+
+    <h2> A.3: Warp the Images </h2>
+    <p>After recovering the homography matrix, I warp the images to align them with the reference image. I implemented image warping using inverse warping with bilinear interpolation to avoid holes and achieve smooth results.</p>
+
+    <h3>Implementation</h3>
+    <p>The warping process consists of the following steps:</p>
+    <ol>
+        <li><strong>Compute warped image boundaries:</strong> Transform the four corners of the source image using the homography to determine the output canvas size.</li>
+        <li><strong>Inverse warping:</strong> For each pixel in the output canvas, apply the inverse homography H⁻¹ to find the corresponding location in the source image.</li>
+        <li><strong>Interpolation:</strong> I implemented two interpolation methods:
+            <ul>
+                <li><strong>Nearest Neighbor:</strong> Round the inverse-warped coordinates to the nearest integer pixel location.</li>
+                <li><strong>Bilinear:</strong> Compute weighted average from the four nearest neighbors using bilinear weights based on fractional coordinates.</li>
+            </ul>
+        </li>
+    </ol>
+
+    <p>The key difference between the two methods lies in the sampling strategy. For nearest neighbor interpolation, I simply round the inverse-warped coordinates to the nearest integer positions. For bilinear interpolation, I compute the four adjacent corner positions (top-left, top-right, bottom-left, bottom-right) by flooring the coordinates, then calculate interpolation weights $w_x$ and $w_y$ based on the fractional parts. The final pixel value is computed as a weighted combination of the four corner pixels.</p>
+
+    <h4>Code Comparison: Interpolation Methods</h4>
+    <div style="display: flex; gap: 2em; margin: 2em 0;">
+        <div style="flex: 1; border: 1px solid #ddd; padding: 1em; border-radius: 5px;">
+            <h5 style="margin-top: 0;">Nearest Neighbor</h5>
+            <pre style="background: #f5f5f5; padding: 1em; border-radius: 3px; overflow-x: auto; font-size: 0.85em;"><code>inv_warped_coords = warp_coords(H_inv, canvas_coords)
+x_coords = np.round(inv_warped_coords[:, 0]).astype(int)
+y_coords = np.round(inv_warped_coords[:, 1]).astype(int)
+
+canvas[valid] = im1[y_coords[valid], x_coords[valid]]</code></pre>
+        </div>
+        <div style="flex: 1; border: 1px solid #ddd; padding: 1em; border-radius: 5px;">
+            <h5 style="margin-top: 0;">Bilinear Interpolation</h5>
+            <pre style="background: #f5f5f5; padding: 1em; border-radius: 3px; overflow-x: auto; font-size: 0.85em;"><code>x_left = np.floor(inv_warped_x).astype(int)
+y_top = np.floor(inv_warped_y).astype(int)
+x_right = x_left + 1
+y_bottom = y_top + 1
+
+wx = (inv_warped_x - x_left)[:, None]
+wy = (inv_warped_y - y_top)[:, None]
+
+canvas[valid] = (1-wx)*(1-wy)*im1[y_top, x_left] +
+                wx*(1-wy)*im1[y_top, x_right] +
+                (1-wx)*wy*im1[y_bottom, x_left] +
+                wx*wy*im1[y_bottom, x_right]</code></pre>
+        </div>
+    </div>
+
+    <h3>Rectification Examples</h3>
+    <p>Before proceeding to mosaicing, I tested the homography and warping implementation by performing rectification on images containing known rectangular objects. Rectification transforms a perspective-distorted view of a planar surface into a frontal, rectangular view.</p>
+
+    <h4>Example 1: Plaque Rectification</h4>
+    <div style="display: flex; justify-content: center; align-items: flex-start; gap: 2em; margin: 1em 0;">
+        <div style="flex: 1; text-align: center;">
+            <img src="media/A3/test2.jpeg" alt="Plaque Original" style="width: 100%; max-width: 400px;">
+            <p>Original image with perspective distortion</p>
+        </div>
+        <div style="flex: 1; text-align: center;">
+            <img src="media/A3/test2_bilinear.png" alt="Plaque Rectified" style="width: 100%; max-width: 400px;">
+            <p>Rectified image - plaque transformed to frontal rectangular view</p>
+        </div>
+    </div>
+
+    <h4>Example 2: Pizza Box Rectification</h4>
+    <div style="display: flex; justify-content: center; align-items: flex-start; gap: 2em; margin: 1em 0;">
+        <div style="flex: 1; text-align: center;">
+            <img src="media/A3/pizza_original.jpeg" alt="Pizza Box Original" style="width: 100%; max-width: 400px;">
+            <p>Original image with perspective distortion</p>
+        </div>
+        <div style="flex: 1; text-align: center;">
+            <img src="media/A3/pizzabox_bilinear.png" alt="Pizza Box Rectified" style="width: 100%; max-width: 400px;">
+            <p>Rectified image - pizza box transformed to frontal rectangular view</p>
+        </div>
+    </div>
+
+    <p>For rectification, I manually selected four corners of the rectangular object in the original image and defined corresponding points as a perfect rectangle. The homography computed from these correspondences successfully transforms the distorted planar surface into a frontal, undistorted view.</p>
+
+    <h3>Interpolation Method</h3>
+
+    <p>I used the bilinear interpolation method to warp the image. The bilinear interpolation method is much smoother than the nearest neighbor method. The bilinear interpolation method took 0.001 seconds to warp the image, while the nearest neighbor method took 0.0001 seconds to warp the image.</p>
+
+    <div style="display: flex; justify-content: center; align-items: flex-start; gap: 2em; margin: 1em 0;">
+        <div style="flex: 1; text-align: center;">
+            <img src="media/A3/nearest.png" alt="Nearest Neighbor Interpolation" style="width: 100%; max-width: 400px;">
+            <p>Nearest Neighbor Interpolation (0.01765s)</p>
+        </div>
+        <div style="flex: 1; text-align: center;">
+            <img src="media/A3/bilinear.png" alt="Bilinear Interpolation" style="width: 100%; max-width: 400px;">
+            <p>Bilinear Interpolation (0.03341s)</p>
+        </div>
+    </div>
+
+    <h3>Quality and Speed Tradeoff</h3>
+    <p>I compared the quality and speed of the nearest neighbor and bilinear interpolation methods. The nearest neighbor method is much faster than the bilinear interpolation method. The nearest neighbor method took 0.01765 seconds to warp the image, while the bilinear interpolation method took 0.03341 seconds to warp the image.
+        However, the bilinear interpolation method produces a much smoother result than the nearest neighbor method, as you can see in the aliasing effect in the nearest neighbor method (compare the red-boxed region).
+    </p>
+
+    <h2> A.4: Blend the Images into a Mosaic </h2>
+    <p>After warping the images, I blend them together to create a seamless mosaic. I use homography transformations to align the images and apply weighted blending in overlapping regions.
+        <br>
+        <strong>Blending method:</strong>
+        I computed the intersection area of the two images and within the intersection area, I blended the two images horizontally from left to right. So the two images are blended seamlessly and the edges of the two images are not visible. Moreover, I used the sigmoid-based weighted blending instead of naive linear blending to reduce the drastic change near the boundary of the intersection area, especially the upper and lower boundaries.
+    </p>
+
+    <h3>Kitchen Mosaic</h3>
+    <h4>Original Images</h4>
+    <div class="image-row">
+        <div class="image-container">
+            <img src="media/A1/1-1.jpeg" alt="Kitchen left image">
+            <p>Left image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/1-2.jpeg" alt="Kitchen middle image">
+            <p>Middle image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/1-3.jpeg" alt="Kitchen right image">
+            <p>Right image</p>
+        </div>
+    </div>
+    <h4>Blended Mosaic</h4>
+    <div>
+        <img src="media/A4/kitchen_stitched.png" alt="Kitchen Stitched Mosaic" style="width: 90%; display: block; margin: 1em auto;">
+        <p class="caption">Kitchen panorama created by blending three images with sigmoid-based weighted blending. </p>
+    </div>
+
+    <h3>Soda Hall 7th Floor Mosaic</h3>
+    <h4>Original Images</h4>
+    <div class="image-row">
+        <div class="image-container">
+            <img src="media/A1/2-1.jpeg" alt="Soda Hall left image">
+            <p>Left image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/2-2.jpeg" alt="Soda Hall middle image">
+            <p>Middle image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/2-3.jpeg" alt="Soda Hall right image">
+            <p>Right image</p>
+        </div>
+    </div>
+    <h4>Blended Mosaic</h4>
+    <div>
+        <img src="media/A4/soda_hall_stitched.png" alt="Soda Hall Stitched Mosaic" style="width: 90%; display: block; margin: 1em auto;">
+        <p class="caption">Soda Hall 7th Floor panorama created by blending three images</p>
+    </div>
+
+    <h3>BAIR Lab Mosaic</h3>
+    <h4>Original Images</h4>
+    <div class="image-row">
+        <div class="image-container">
+            <img src="media/A1/bair-1.jpeg" alt="BAIR left image">
+            <p>Left image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/bair-2.jpeg" alt="BAIR middle image">
+            <p>Middle image</p>
+        </div>
+        <div class="image-container">
+            <img src="media/A1/bair-3.jpeg" alt="BAIR right image">
+            <p>Right image</p>
+        </div>
+    </div>
+    <h4>Blended Mosaic</h4>
+    <div>
+        <img src="media/A4/bair_stitched.png" alt="BAIR Stitched Mosaic" style="width: 90%; display: block; margin: 1em auto;">
+        <p class="caption">BAIR lab panorama created by blending three images</p>
+    </div>
+
+    <h2> A.5: Bells & Whistles </h2>
+
+    <h3>Spherical Warping for Reduced Edge Distortion</h3>
+    <p>To reduce distortion at the edges of wide-angle panoramas, I implemented spherical projection as an alternative to planar homography-based stitching. Instead of projecting the mosaic onto a flat plane, the spherical surface better models the camera's rotational motion during capture.</p>
+
+    <h4>Implementation</h4>
+    <p>I used inverse warping to achieve optimal resolution by sampling directly from the original pre-warped source images. For each pixel in the output canvas, I compute its corresponding spherical coordinates (longitude $\lambda$ and latitude $\phi$), then project these back to the planar source image coordinates. The inverse homography transformation accounts for the relative camera positions between images. Finally, bilinear interpolation is applied to sample pixel values from the source images. I chose a focal length of $f = 400$ pixels, which provided a good balance between field of view and distortion reduction for the panoramas.</p>
+
+    <h4>Comparison: Planar vs. Spherical Stitching</h4>
+    <div style="display: flex; flex-direction: column; gap: 2em; margin: 2em 0;">
+        <div>
+            <h5 style="text-align: center;">Planar Homography-Based Stitching</h5>
+            <img src="media/A4/bair_stitched.png" alt="BAIR Planar Stitching" style="width: 90%; display: block; margin: 0 auto;">
+            <p class="caption">Standard planar homography stitching - notice distortion at the edges</p>
+        </div>
+        <div>
+            <h5 style="text-align: center;">Spherical Warping-Based Stitching</h5>
+            <img src="media/bells_and_whistles/bair_stitched_spherical.png" alt="BAIR Spherical Stitching" style="width: 90%; display: block; margin: 0 auto;">
+            <p class="caption">Spherical warping stitching - significantly reduced edge distortion and more natural appearance (linear alpha blending omitted for simplicity)</p>
+        </div>
+    </div>
+
+    <p><strong>Observation:</strong> The spherical warping method produces panoramas with significantly less distortion at the edges compared to planar homography-based stitching. The spherical projection better preserves the natural appearance of the scene, especially for wide-angle panoramas where edge distortion is more pronounced in planar methods.
+    </p>
+</body>
+
+</html>
