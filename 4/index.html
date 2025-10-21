@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 3: Image Warping and Mosaicing</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- MathJax for mathematical formula rendering -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+    <!-- Navigation Link -->
+    <div style="background: #f0f0f0; padding: 1em; margin-bottom: 2em; border-radius: 5px; text-align: center;">
+        <a href="../3/index.html" style="text-decoration: none; color: #0066cc; font-weight: bold; font-size: 1.1em;">
+            ← Back to Project 3A
+        </a>
+    </div>
+
+    <h1> Project 3B: IMAGE WARPING and MOSAICING </h1>
+    <p> This project explores image warping and mosaicing techniques. I implement image warping and mosaicing techniques.
+
+    <h1>Part B: FEATURE MATCHING for AUTOSTITCHING</h1>
+    <p>In Part B, I implement automatic feature detection and matching to create image mosaics without manual point correspondence selection. This approach follows the paper "Multi-Image Matching using Multi-Scale Oriented Patches" by Brown et al., with some simplifications.</p>
+
+    <h2>B.1: Harris Corner Detection</h2>
+    <p><strong>Deliverables:</strong> Show detected corners overlaid on image, with and without ANMS.</p>
+
+    <h4>Corner Detection Results Comparison</h4>
+
+    <div style="margin: 2em 0;">
+        <h5>1. All Detected Harris Corners</h5>
+        <img src="media/detected.png" alt="All detected Harris corners" style="width: 50%; display: block; margin: 1em auto;">
+        <p class="caption">All Harris corners detected using corner response threshold. </p>
+    </div>
+
+    <div style="margin: 2em 0;">
+        <h5>2. Top-k Corners by Strength (Naive Selection)</h5>
+        <img src="media/strength_sorted.png" alt="Top-k corners by strength" style="width: 50%; display: block; margin: 1em auto;">
+        <p class="caption">Top k corners selected by corner response strength. This naive approach results in clustered features concentrated in high-contrast areas, leading to poor spatial distribution across the image.</p>
+    </div>
+
+    <div style="margin: 2em 0;">
+        <h5>3. ANMS-Selected Corners (k corners)</h5>
+        <img src="media/anms.png" alt="ANMS selected corners" style="width: 50%; display: block; margin: 1em auto;">
+        <p class="caption">k corners selected using Adaptive Non-Maximal Suppression (ANMS). ANMS ensures well-distributed features across the entire image by selecting corners with large suppression radii, resulting in better coverage and more robust matching.</p>
+    </div>
+
+    <h4>ANMS Algorithm Details</h4>
+    <p>The Adaptive Non-Maximal Suppression (ANMS) algorithm addresses the clustering problem in naive strength-based selection by ensuring spatial distribution of selected features. The algorithm works as follows:</p>
+
+    <div style="background: #f9f9f9; padding: 1.5em; border-left: 4px solid #0066cc; margin: 1.5em 0;">
+        <h5 style="margin-top: 0;">Algorithm Steps:</h5>
+        <ol style="line-height: 1.8;">
+            <li><strong>Compute suppression radius for each corner:</strong> For each detected corner $i$ with strength $f_i$, compute the minimum distance to any significantly stronger corner:
+                <p style="margin: 0.5em 0;">$$r_i = \min_{j} \|p_i - p_j\| \quad \text{subject to } f_j > c_{\text{robust}} \cdot f_i$$</p>
+                where $c_{\text{robust}}$ is a robustness coefficient (typically 0.9), and $\|p_i - p_j\|$ is the Euclidean distance between corners.
+            </li>
+            <li><strong>Sort by suppression radius:</strong> Rank all corners in descending order of their suppression radius $r_i$. Corners with larger radii are more spatially isolated from stronger features.</li>
+            <li><strong>Select top-k corners:</strong> Choose the top $k$ corners with the largest suppression radii. These corners are both strong and well-distributed across the image.</li>
+        </ol>
+    </div>
+
+    <h5>Intuition</h5>
+    <p>The suppression radius $r_i$ measures how "unique" a corner is in its local neighborhood. A large radius means the corner is the strongest feature in a large surrounding area, making it a good representative feature point. By selecting corners with large radii, ANMS automatically achieves good spatial coverage while maintaining feature quality.</p>
+
+    <h5>Key Parameters</h5>
+    <ul>
+        <li><strong>$c_{\text{robust}}$ (robustness coefficient):</strong> Controls the threshold for "significantly stronger." Typical value: 0.9</li>
+        <li><strong>$k$ (number of features):</strong> Number of corners to retain. Typical values: 100-500 depending on image size and application</li>
+    </ul>
+
+    <h2>B.2: Feature Descriptor Extraction</h2>
+
+    <h4>Descriptor Extraction Process</h4>
+    <ol>
+        <li><strong>Extract 40×40 window:</strong> Sample a large window centered at the corner point</li>
+        <li><strong>Gaussian blur (optional):</strong> Apply Gaussian smoothing to the 40×40 window for robustness</li>
+        <li><strong>Downsample to 8×8:</strong> Subsample the blurred window to create the 8×8 descriptor</li>
+        <li><strong>Bias/gain normalization:</strong> Normalize the descriptor to zero mean and unit variance:
+        </li>
+    </ol>
+
+
+    <img src="media/corners.png" alt="Feature descriptor" style="width: 50%; display: block; margin: 1em auto;">
+    <p class="caption">Sample of extracted 8×8 feature descriptors from detected corners</p>
+
+    <h4>Why ANMS is Better</h4>
+    <p>Comparing the three approaches above:</p>
+    <ul>
+        <li><strong>All corners:</strong> Too many features, computationally expensive, includes weak/noisy corners</li>
+        <li><strong>Strength-based top-k:</strong> Features cluster in high-contrast regions, leaving large areas uncovered</li>
+        <li><strong>ANMS top-k:</strong> Optimal spatial distribution ensures features spread across the entire image, improving matching robustness and reducing mismatches</li>
+    </ul>
+
+    <h4>B.3 Feature Matches</h4>
+    <div>
+        <img src="media/correspondances.png" alt="Kitchen matches 1-2" style="width: 50%; display: block; margin: 1em auto;">
+        <p class="caption">Matched features between kitchen images 1 and 2 (threshold=0.7)</p>
+    </div>
+
+    <h2>B.4: RANSAC for Robust Homography</h2>
+    <p><strong>Deliverables:</strong> Implement 4-point RANSAC from scratch. Show comparison of stitching manually and automatically. Create ≥3 automatic mosaics.</p>
+
+    <h3>Implementation</h3>
+    <p>I implemented 4-point RANSAC to compute robust homography estimates from potentially noisy feature matches. The algorithm iteratively samples random subsets of matches and finds the homography with the most inlier support.</p>
+
+    <h4>RANSAC Algorithm</h4>
+    <ol>
+        <li><strong>Random sampling:</strong> Randomly select 4 feature correspondences</li>
+        <li><strong>Compute homography:</strong> Use the 4 points to compute a homography matrix H</li>
+        <li><strong>Count inliers:</strong> For all feature matches, count how many are consistent with H (within distance threshold ε)</li>
+        <li><strong>Update best model:</strong> If this H has more inliers than the current best, save it</li>
+        <li><strong>Iterate:</strong> Repeat steps 1-4 for N iterations</li>
+        <li><strong>Refit:</strong> Estimate H using all inliers from the best model</li>
+    </ol>
+
+    <h3>Results for Three Image Sets</h3>
+    <p>Below are the complete automatic stitching results for each of the three image sets, showing the feature matching and RANSAC inliers, followed by the final stitched panorama.</p>
+
+    <h4>Image Set 1: Kitchen</h4>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5em; margin: 2em 0;">
+        <!-- Row 1: Correspondences and Matches -->
+        <div style="text-align: center;">
+            <img src="media/correspondances.png" alt="Correspondences" style="width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0.5em; font-size: 0.9em;"><strong>Correspondences</strong></p>
+        </div>
+        <div style="text-align: center;">
+            <img src="media/ex2-matches.png" alt="Feature Matches" style="width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0.5em; font-size: 0.9em;"><strong>Feature Matches</strong></p>
+        </div>
+        <div style="text-align: center;">
+            <img src="media/ex3-matches.png" alt="Matched Features" style="width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0.5em; font-size: 0.9em;"><strong>Matched Features</strong></p>
+        </div>
+
+        <!-- Row 2: RANSAC Results -->
+        <div style="text-align: center;">
+            <img src="media/ransac1.png" alt="Stitch 1" style="width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0.5em; font-size: 0.9em;"><strong>Stich 1</strong></p>
+        </div>
+        <div style="text-align: center;">
+            <img src="media/ex2.png" alt="Stitch 2" style="width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0.5em; font-size: 0.9em;"><strong>Stich 2</strong></p>
+        </div>
+        <div style="text-align: center;">
+            <img src="media/ex3.png" alt="Stitch 3" style="width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0.5em; font-size: 0.9em;"><strong>Stich 3</strong></p>
+        </div>
+    </div>
+    <p class="caption" style="text-align: center; margin-top: 1em;">Complete automatic stitching pipeline for Kitchen images: Feature matching → RANSAC filtering → Final panorama</p>
+
+    <h2>B.5: Bells & Whistles (CS280A)</h2>
+    <p>For the CS280A requirement, I implemented [choose one of the following and describe your implementation]:</p>
+
+    <h3>Multiscale Processing Implementation</h3>
+    <p>I implemented multiscale Harris corner detection and feature descriptor extraction to improve robustness and handle features at different spatial scales. This allows the algorithm to detect both fine-grained details and larger structural features in the image.</p>
+
+    <h4>Implementation Details</h4>
+    <p>The multiscale Harris corner detection works as follows:</p>
+    <ol>
+        <li><strong>Image stack construction:</strong> Create an image stack by progressively downsampling the input image. I used 3 scale levels</li>
+        <li><strong>Corner detection at each scale:</strong> Apply Harris corner detection independently at each scale level to capture features of different sizes.</li>
+        <li><strong>Scale-aware ANMS:</strong> Apply ANMS at each scale to select well-distributed corners, ensuring feature coverage across different scales.</li>
+        <li><strong>Multiscale feature descriptors:</strong> Extract 8×8 descriptors from the appropriately scaled 40×40 windows at each pyramid level.</li>
+        <li><strong>Feature aggregation:</strong> Combine features from all scales, storing both the descriptor and its scale information for robust matching.</li>
+    </ol>
+
+    <h4>Multiscale Corner Detection Results</h4>
+    <p>Below are the Harris corners detected at three different scale levels. Notice how different scales capture different types of features:</p>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5em; margin: 2em 0;">
+        <!-- Scale Level 0 -->
+        <div style="text-align: center;">
+            <img src="media/multiscale-lv1.png" alt="Scale Level 0 corners" style="width: 100%; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 0.5em;">
+            <img src="media/multiscale-match1.png" alt="Scale Level 0 matches" style="width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0.5em; font-size: 0.9em;">
+                <strong>Scale Level 0</strong><br>
+                <span style="color: #666;">Fine-grained features and small details</span>
+            </p>
+        </div>
+
+        <!-- Scale Level 1 -->
+        <div style="text-align: center;">
+            <img src="media/multiscale-lv2.png" alt="Scale Level 1 corners" style="width: 100%; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 0.5em;">
+            <img src="media/multiscale-match2.png" alt="Scale Level 1 matches" style="width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0.5em; font-size: 0.9em;">
+                <strong>Scale Level 1</strong><br>
+                <span style="color: #666;">Medium-scale structural features</span>
+            </p>
+        </div>
+
+        <!-- Scale Level 2 -->
+        <div style="text-align: center;">
+            <img src="media/multiscale-lv3.png" alt="Scale Level 2 corners" style="width: 100%; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 0.5em;">
+            <img src="media/multiscale-match3.png" alt="Scale Level 2 matches" style="width: 100%; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0.5em; font-size: 0.9em;">
+                <strong>Scale Level 2</strong><br>
+                <span style="color: #666;">Coarse-scale prominent structures</span>
+            </p>
+        </div>
+    </div>
+    <p class="caption" style="text-align: center; font-style: italic; color: #555;">
+        Each scale level shows corner detection results (top) and feature matching results (bottom). Different scales capture features at different spatial frequencies.
+    </p>
+
+    <h4>Improved Robustness with Multiscale Matching</h4>
+    <p>The multiscale approach significantly improves matching robustness compared to single-scale feature detection. By detecting features at multiple scales, the algorithm can handle:</p>
+    <ul>
+        <li><strong>Noise resilience:</strong> Coarser scales naturally filter out high-frequency noise</li>
+        <li><strong>Feature diversity:</strong> Captures both fine details (edges, corners) and large structures (building outlines, major objects)</li>
+        <li><strong>Matching stability:</strong> More features across scales increase the likelihood of finding reliable correspondences</li>
+    </ul>
+
+    <h4>Multiscale Matching Results</h4>
+    <div style="margin: 2em 0;">
+        <img src="media/multiscale-robust-matching.png" alt="Multiscale robust matching" style="width: 50%; display: block; margin: 1em auto; border: 1px solid #ddd; border-radius: 5px;">
+        <p class="caption" style="text-align: center;">Robust feature matching using multiscale descriptors. The multiscale approach produces more reliable matches across images with scale variations, resulting in stronger geometric consistency.</p>
+    </div>
+
+</body>
+
+</html>
