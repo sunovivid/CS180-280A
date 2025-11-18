@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 5: Neural Radiance Fields (NeRF)</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            border-bottom: 3px solid #333;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
+            margin-top: 40px;
+        }
+        h3 {
+            color: #666;
+            margin-top: 25px;
+        }
+        img, video {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 20px auto;
+        }
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .image-grid img {
+            width: 100%;
+            margin: 0;
+        }
+        .image-grid .caption {
+            margin-top: 5px;
+        }
+        p {
+            color: #444;
+        }
+        a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .caption {
+            text-align: center;
+            font-style: italic;
+            color: #666;
+            margin-top: -10px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+        .nav {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="../index.html">Back to Home</a>
+    </div>
+
+    <h1>Project 5: Neural Radiance Fields (NeRF)</h1>
+
+    <h2>Part 0: Camera Calibration and 3D Scanning</h2>
+
+    <h3>Overview</h3>
+    <p>
+        I captured 30-50 images of ArUco tags for camera calibration using consistent zoom and lighting.
+        The calibration process used cv2.calibrateCamera() to compute the intrinsic matrix and distortion coefficients.
+        For object scanning, I photographed my object from various angles and distances.
+    </p>
+
+    <h3>Camera Pose Visualization</h3>
+    <img src="media/part 0/pose 1.png" alt="Camera poses visualization 1">
+    <p class="caption">Camera frustum visualization with projected images (View 1)</p>
+
+    <img src="media/part 0/pose 2.png" alt="Camera poses visualization 2">
+    <p class="caption">Camera frustum visualization with projected images (View 2)</p>
+
+    <h2>Part 1: 2D Neural Field Fitting</h2>
+
+    <h3>Network Architecture</h3>
+    <p>
+        I implemented an MLP with positional encoding to map 2D pixel coordinates to RGB colors.
+        The network uses fully connected layers with ReLU activations and positional encoding with L=10 frequency levels.
+        Training used Adam optimizer with learning rate 1e-2.
+    </p>
+
+    <h3>Training Progression</h3>
+    <img src="media/part 1/inr_training_progress.gif" alt="Training progression animation">
+    <p class="caption">Animated training progression showing how the network learns the image</p>
+
+    <img src="media/part 1/training_progress.png" alt="Training progress stages">
+    <p class="caption">Training progression at different iterations</p>
+
+    <h3>Hyperparameter Exploration</h3>
+    <p>
+        I tested four different configurations by varying positional encoding (PE) frequency levels (L = 0 vs. L = 10) and network hidden layer width (4 vs. 256).
+        Networks with higher PE frequency (L = 10) can capture fine-grained image details more effectively than those with L = 0.
+        Similarly, wider networks (width = 256) offer greater representational capacity for learning complex color distributions compared to narrow networks (width = 4).
+    </p>
+
+    <img src="media/part 1/grid.png" alt="Hyperparameter grid comparison">
+    <p class="caption">Results with different network configurations and PE frequencies</p>
+
+    <img src="media/part 1/PSNR.png" alt="PSNR training curve">
+    <p class="caption">PSNR over training iterations</p>
+
+    <h3>Custom Images - Marugame</h3>
+    <img src="media/part 1/pred_rgb_marugame.gif" alt="Marugame training progression">
+    <p class="caption">Training progression for Marugame image</p>
+
+    <img src="media/part 1/PSNR_marugame.png" alt="Marugame PSNR curve">
+    <p class="caption">PSNR over training iterations for Marugame image</p>
+
+    <h2>Part 2: 3D Neural Radiance Field</h2>
+
+    <h3>Part 2.1: Create Rays from Cameras</h3>
+    <p>
+        I developed three core transformation functions to generate rays from camera parameters.
+        The <strong>transform</strong> function applies camera-to-world matrices (obtained from Part 0.3) to convert points from camera space to world coordinates.
+        The <strong>pixel_to_camera</strong> function uses the intrinsic matrix from camera calibration (Part 0.1) to map 2D pixel coordinates and depth values into 3D camera space by inverting the projection.
+        Finally, <strong>pixel_to_ray</strong> combines these transformations to generate rays: the ray origin is extracted from the camera-to-world matrix's translation component, while the ray direction is computed by projecting the pixel to world space at unit depth, subtracting the origin, and normalizing.
+    </p>
+
+    <h3>Part 2.2: Sampling</h3>
+    <p>
+        I implemented a two-stage sampling approach for efficient training.
+        For ray sampling, I created a dataloader that randomly selects N rays per iteration by flattening all pixels across training images, ensuring diverse coverage of the entire dataset.
+        For point sampling along each ray, I uniformly sample 64 positions and add random jitter during training to prevent overfitting to fixed locations.
+        The 3D coordinates are calculated using the parametric equation: <em>x = ray_origin + ray_direction × t</em>, where <em>t</em> represents the sampling distance along the ray.
+    </p>
+
+    <img src="media/part 2/rays_from_single_pos.png" alt="Rays from single camera position">
+    <p class="caption">Rays sampled from a single camera position</p>
+
+    <img src="media/part 2/rays_from_multiple_pos.png" alt="Rays from multiple camera positions">
+    <p class="caption">Rays sampled from multiple camera positions</p>
+
+    <h3>Part 2.3: Neural Radiance Field</h3>
+    <p>
+        The NeRF model architecture consists of an MLP that takes 3D position <strong>x</strong> and viewing direction <strong>r<sub>d</sub></strong> as input.
+        Both inputs are encoded with positional encoding (PE) to capture high-frequency details.
+        The network outputs RGB color and volume density σ for each point in 3D space.
+    </p>
+
+    <img src="../2/media/part2/nerf_arch.png" alt="NeRF Architecture">
+    <p class="caption">NeRF network architecture with positional encoding and skip connections</p>
+
+    <h3>Part 2.4: Volume Rendering</h3>
+    <p>
+        Volume rendering aggregates the colors and densities along each ray to produce the final pixel color.
+        The rendering equation computes the expected color along ray <strong>r</strong>:
+    </p>
+
+    <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; overflow-x: auto;">
+        $$\hat{C}(\mathbf{r}) = \sum_{i=1}^{N} T_i (1 - \exp(-\sigma_i \delta_i)) \mathbf{c}_i, \text{ where } T_i = \exp\left(-\sum_{j=1}^{i-1} \sigma_j \delta_j\right)$$
+    </div>
+
+    <p>
+        where <strong>T<sub>i</sub></strong> represents the accumulated transmittance (probability that light reaches point i without being absorbed),
+        <strong>(1 - exp(-σ<sub>i</sub>δ<sub>i</sub>))</strong> is the opacity at point i,
+        <strong>c<sub>i</sub></strong> is the RGB color, and
+        <strong>δ<sub>i</sub></strong> is the distance between adjacent samples.
+        This formulation allows the network to learn volumetric representations of 3D scenes through differentiable rendering.
+    </p>
+
+    <h3>Training on Lego Scene</h3>
+    <p>
+        The NeRF network learns to represent the 3D scene through volume rendering.
+        Below shows the training progression over 5000 iterations.
+    </p>
+
+    <img src="media/part 2/lego_training_progress.gif" alt="Lego training animation">
+    <p class="caption">Animated training progression for Lego scene.<br>
+    Each frame: [Train GT / Recon] [Validation GT / Recon]</p>
+
+    <div class="image-grid">
+        <div>
+            <img src="media/part 2/lego_iter_0000.jpg" alt="Lego 0 iters">
+            <p class="caption">Iteration 0 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/lego_iter_1000.jpg" alt="Lego 1000 iters">
+            <p class="caption">Iteration 1000 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/lego_iter_2000.jpg" alt="Lego 2000 iters">
+            <p class="caption">Iteration 2000 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/lego_iter_3000.jpg" alt="Lego 3000 iters">
+            <p class="caption">Iteration 3000 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/lego_iter_4000.jpg" alt="Lego 4000 iters">
+            <p class="caption">Iteration 4000 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/lego_iter_4999.jpg" alt="Lego 4999 iters">
+            <p class="caption">Iteration 4999 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+    </div>
+
+    <img src="media/part 2/lego_psnr.png" alt="Validation PSNR">
+    <p class="caption">Validation PSNR curve over training iterations</p>
+
+    <h3>Novel View Synthesis - Lego (Bells and Whistles: Depth Map)</h3>
+    <p>
+        I implemented spherical rendering with both RGB and depth map visualization.
+        The depth map provides geometric understanding of the 3D scene structure.
+    </p>
+
+    <img src="media/part 2/rendered_spherical_video.gif" alt="Spherical rendering with RGB and depth">
+    <p class="caption">Spherical camera path showing both RGB rendering and depth map visualization</p>
+
+    <h2>Part 2.6: Custom Object - Banana</h2>
+
+    <h3>Training Results</h3>
+    <p>
+        For my custom object (banana), I adjusted near/far parameters and used appropriate sampling settings.
+        The training was performed over 5000 iterations with similar configurations as the Lego scene.
+    </p>
+
+    <img src="media/part 2/banana_training_progress.gif" alt="Banana training animation">
+    <p class="caption">Animated training progression for banana scene.<br>
+    Each frame: [Train GT / Recon] [Validation GT / Recon]</p>
+
+    <div class="image-grid">
+        <div>
+            <img src="media/part 2/banana_iter_0000.jpg" alt="Banana 0 iters">
+            <p class="caption">Iteration 0 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/banana_iter_1000.jpg" alt="Banana 1000 iters">
+            <p class="caption">Iteration 1000 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/banana_iter_2000.jpg" alt="Banana 2000 iters">
+            <p class="caption">Iteration 2000 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/banana_iter_3000.jpg" alt="Banana 3000 iters">
+            <p class="caption">Iteration 3000 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/banana_iter_4000.jpg" alt="Banana 4000 iters">
+            <p class="caption">Iteration 4000 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+        <div>
+            <img src="media/part 2/banana_iter_4999.jpg" alt="Banana 4999 iters">
+            <p class="caption">Iteration 4999 - [Train GT / Recon] [Validation GT / Recon]</p>
+        </div>
+    </div>
+
+    <img src="media/part 2/banana_psnr_curves.png" alt="Banana PSNR curves">
+    <p class="caption">PSNR curves over training iterations for banana scene</p>
+
+    <h3>Analysis and Observations</h3>
+    <p>
+        During training, the network learned to reconstruct training camera views well, but struggled with validation views.
+        The validation images remained blurry, capturing only faint ArUco tag shapes before failing to converge.
+        This appears to be caused by sparse camera poses in the training set (see Part 0's Camera Pose Visualization).
+        In particular, there were insufficient camera poses from top-down viewing angles.
+        Capturing more diverse data could have improved results, but time constraints prevented recapturing after dismantling the setup.
+    </p>
+    <p>
+        To maximize performance with limited data, I experimented with various hyperparameters including n_near, n_far, batch size (number of rays), samples per ray, learning rate, learning rate schedule, and network architecture.
+        While these changes did not dramatically improve performance, some adjustments proved helpful:
+    </p>
+    <ul>
+        <li>Setting <strong>n_near=0.1</strong> and <strong>n_far=1.0</strong> after careful calibration using viser visualization</li>
+        <li>Reducing network architecture complexity by decreasing the positional encoding frequency for ray direction from <strong>N_dir=6 to N_dir=4</strong></li>
+    </ul>
+    <p>
+        These modifications helped the network progress from completely failing on validation images to at least capturing basic shapes.
+    </p>
+
+    <h3>Novel View Synthesis Attempts</h3>
+    <p>
+        Since the network struggled to learn validation images well, I attempted to find test camera pose trajectories that would effectively cover novel views between training camera poses.
+        Despite trying various camera path configurations, achieving satisfactory novel view synthesis remained challenging due to the sparse training data.
+    </p>
+
+    <img src="media/part 2/banana_test_camera_pos_trajectory.png" alt="Banana test camera trajectory">
+    <p class="caption">Test camera pose trajectory visualization showing different attempted paths</p>
+
+    <img src="media/part 2/test_renders_banana@fix_ray_sampling.gif" alt="Banana test render 1">
+    <p class="caption">Novel view synthesis attempt 1</p>
+
+    <img src="media/part 2/test_renders_banana@banana_v2@fix_ray_sampling.gif" alt="Banana test render 2">
+    <p class="caption">Novel view synthesis attempt 2</p>
+
+    <img src="media/part 2/test_renders_banana@with_test@1000.gif" alt="Banana test render 3">
+    <p class="caption">Novel view synthesis attempt 3 (at 1000 iterations)</p>
+
+    <div class="nav">
+        <a href="../index.html">Back to Home</a>
+    </div>
+</body>
+</html>
