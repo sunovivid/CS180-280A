@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 5: Diffusion Models</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="nav">
+        <a href="../index.html">Back to Home</a>
+    </div>
+
+    <h1>Project 5: Diffusion Models</h1>
+
+    <h3>Part 0: Setup and Sampling</h3>
+
+    <h4>Overview</h4>
+    <p>
+        In this section, I experimented with the DeepFloyd IF diffusion model to generate images from text prompts.
+        I created custom text prompts and generated their embeddings using the T5 Encoder.
+        The model was tested with different numbers of inference steps to observe the quality variations.
+    </p>
+
+    <h4>Random Seed</h4>
+    <p>
+        Throughout this project, I used random seed: <code>100</code> for reproducibility.
+    </p>
+
+    <h4>Custom Text Prompts and Generated Images</h4>
+    <p>
+        I tested three prompts with varying levels of detail to understand how prompt specificity affects generation quality.
+        The prompts used were (from left to right):
+    </p>
+    <ul>
+        <li><em>"a photo of a dog"</em></li>
+        <li><em>"a DSLR photo of a dog, high quality"</em></li>
+        <li><em>"A highly detailed, photorealistic portrait photo of a medium sized dog sitting calmly outdoors. The dog has soft, well groomed fur with visible individual hair strands, natural color variations, and realistic texture. The dog is facing the camera with expressive eyes, sharp focus on the face, and a relaxed, friendly expression. Shot with a professional DSLR camera, shallow depth of field, natural lighting, soft sunlight illuminating the fur. Background is softly blurred with bokeh effect, showing a green park environment. Ultra high resolution, realistic proportions, accurate anatomy, natural shadows, cinematic composition, no distortion."</em></li>
+    </ul>
+    <p>
+        More detailed prompts with specific constraints and quality descriptors (e.g., <em>"high quality"</em>, <em>"photorealistic"</em>, <em>"DSLR"</em>)
+        produce higher quality images with better adherence to the desired attributes.
+        Additionally, using more inference steps tends to generate images with finer details and higher overall quality.
+    </p>
+
+    <img src="media/Part A/0-setup-different-prompts.png" alt="Generated samples with different prompts" class="example3">
+    <p class="caption">Text-to-image generation with three prompts of increasing detail (left to right)</p>
+
+    <img src="media/Part A/0-differnet-steps.png" alt="Generated samples with different inference steps" class="example3">
+    <p class="caption">Effect of inference steps on generation quality: more steps produce higher quality results</p>
+
+    <h3>Part 1: Diffusion Model Sampling</h3>
+
+    <h4>1.1 Implementing the Forward Process</h4>
+    <p>
+        The forward process adds noise to a clean image according to the diffusion equation.
+        I implemented the <code>forward(im, t)</code> function that adds noise at timestep t using the formula:
+    </p>
+    <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; overflow-x: auto;">
+        $$x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon, \quad \epsilon \sim \mathcal{N}(0, I)$$
+    </div>
+    <p>
+        Below shows the Campanile test image at different noise levels: t = [250, 500, 750].
+    </p>
+
+    <img src="media/Part A/1-noise-levels.png" alt="Noisy Campanile at different timesteps" class="example-small">
+    <p class="caption">Campanile with noise at t=250, t=500, and t=750</p>
+
+    <h4>1.2 Classical Denoising</h4>
+    <p>
+        To establish a baseline, I applied classical Gaussian blur denoising to the noisy images.
+        This approach uses a simple low-pass filter to reduce noise but cannot recover fine details.
+    </p>
+
+    <img src="media/Part A/1-2-gaussian-denoised.png" alt="Gaussian denoising results" class="example-small">
+    <p class="caption">Top: Original noisy images at t=250, 500, 750. Bottom: Gaussian blur denoised results</p>
+
+    <h4>1.3 One-Step Denoising</h4>
+    <p>
+        Using the pretrained UNet, I estimated the noise in each noisy image and removed it in a single step.
+        The UNet predicts the noise ε, which is then subtracted from the noisy image to recover a clean estimate.
+        This one-step approach provides better results than Gaussian blur, especially at lower noise levels.
+    </p>
+
+    <img src="media/Part A/1-3.png" alt="One-step denoising results" class="example-small">
+    <p class="caption">One-step denoising results showing original, noisy, and denoised images at t=250, 500, 750</p>
+
+    <h4>1.4 Iterative Denoising</h4>
+    <p>
+        Instead of denoising in one step, I implemented iterative denoising that gradually removes noise over multiple steps.
+        Starting from timestep 990 and using a stride of 30, the algorithm progressively denoises the image.
+        This approach significantly outperforms both one-step denoising and Gaussian blur.
+    </p>
+
+    <img src="media/Part A/1-4.png" alt="Iterative denoising comparison" class="example3">
+    <p class="caption">Comparison of iterative denoising vs one-step vs Gaussian blur. Every 5th denoising step is shown.</p>
+
+    <h4>1.5 Diffusion Model Sampling</h4>
+    <p>
+        Starting from pure random noise, I generated completely new images using the diffusion model.
+        Using the text prompt "a high quality photo" and applying iterative denoising from t=990 to t=0,
+        the model creates diverse images from scratch.
+    </p>
+
+    <img src="media/Part A/1-5-samples.png" alt="Generated samples from noise" class="example3">
+    <p class="caption">Five diverse images generated from pure noise using diffusion model sampling</p>
+
+    <h4>1.6 Classifier-Free Guidance (CFG)</h4>
+    <p>
+        Classifier-free guidance improves image quality by amplifying the conditional signal.
+        The CFG formula combines conditional and unconditional noise estimates:
+    </p>
+    <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; overflow-x: auto;">
+        $$\epsilon = \epsilon_u + \gamma (\epsilon_c - \epsilon_u)$$
+    </div>
+    <p>
+        where γ is the guidance scale. Using γ=7, the generated images show stronger adherence to the text prompt.
+    </p>
+
+    <img src="media/Part A/1-6-samples-with-cfg.png" alt="CFG samples" class="example3">
+    <p class="caption">Five images generated with Classifier-Free Guidance (γ=7)</p>
+
+    <h4>1.7 Image-to-Image Translation</h4>
+    <p>
+        Using SDEdit, I can edit existing images by adding noise and then denoising with a text prompt.
+        The starting noise level (i_start) controls the trade-off between preserving the original structure
+        and allowing creative freedom. Higher i_start values add more noise, leading to more dramatic changes.
+    </p>
+
+    <h5>1.7.1 Editing the Test Image</h5>
+    <p>
+        Below shows the Campanile edited at different noise levels using the prompt "a high quality photo".
+    </p>
+
+    <img src="media/Part A/1-7-sdedit-Campanile.png" alt="Campanile editing at different noise levels" class="example3">
+    <p class="caption">Campanile edited with i_start = [1, 3, 5, 7, 10, 20]</p>
+
+    <h5>Additional Test Images</h5>
+    <p>
+        I applied the same SDEdit process to additional images including web images and hand-drawn sketches.
+    </p>
+
+    <img src="media/Part A/1-7-sdedit-own-image-1.png" alt="Own image 1 editing" class="example3">
+    <p class="caption">Image 1 edited at noise levels [1, 3, 5, 7, 10, 20]</p>
+
+    <img src="media/Part A/1-7-sdedit-own-image-2.png" alt="Own image 2 editing" class="example3">
+    <p class="caption">Image 2 edited at noise levels [1, 3, 5, 7, 10, 20]</p>
+
+    <img src="media/Part A/1-7-1-web-image.png" alt="Web image editing" class="example3">
+    <p class="caption">Web image edited at noise levels [1, 3, 5, 7, 10, 20]</p>
+
+    <img src="media/Part A/1-7-1-draw1.png" alt="Hand-drawn image 1" class="example3">
+    <p class="caption">Hand-drawn image 1 edited at noise levels [1, 3, 5, 7, 10, 20]</p>
+
+    <img src="media/Part A/1-7-1-draw2.png" alt="Hand-drawn image 2" class="example3">
+    <p class="caption">Hand-drawn image 2 edited at noise levels [1, 3, 5, 7, 10, 20]</p>
+
+    <h5>1.7.2 Inpainting</h5>
+    <p>
+        Inpainting allows editing specific regions of an image while preserving the rest.
+        At each denoising step, I enforce the known pixels to match the original noisy image:
+    </p>
+    <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; overflow-x: auto;">
+        $$x_t \leftarrow m \odot x_t + (1 - m) \odot \text{forward}(x_{\text{orig}}, t)$$
+    </div>
+
+    <img src="media/Part A/1-7-2-campaneli.png" alt="Campanile inpainting" class="example-medium">
+    <p class="caption">Inpainting the top of Campanile with custom mask</p>
+
+    <img src="media/Part A/1-7-2-inpaint-own-1.png" alt="Inpainting example 1" class="example3">
+    <p class="caption">Inpainting example 1 with custom mask</p>
+
+    <img src="media/Part A/1-7-2-inpaint-own-2.png" alt="Inpainting example 2" class="example3">
+    <p class="caption">Inpainting example 2 with custom mask</p>
+
+    <h5>1.7.3 Text-Conditional Image-to-Image Translation</h5>
+    <p>
+        Using custom text prompts, I can guide the editing process to achieve specific effects.
+        This demonstrates the power of combining image structure with semantic guidance.
+    </p>
+
+    <img src="media/Part A/1-7-3-Campaneli.png" alt="Text-guided Campanile editing" class="example3">
+    <p class="caption">Campanile edited with custom text prompt at various noise levels</p>
+
+    <img src="media/Part A/1-7-3-custom-1.png" alt="Text-guided editing 1" class="example3">
+    <p class="caption">Image 1 with text-guided editing at different noise levels</p>
+
+    <img src="media/Part A/1-7-3-custom-2.png" alt="Text-guided editing 2" class="example3">
+    <p class="caption">Image 2 with text-guided editing at different noise levels</p>
+
+    <h4>1.8 Visual Anagrams</h4>
+    <p>
+        Visual anagrams are images that reveal different content when viewed upside down.
+        I implemented this by averaging the noise estimates from two different prompts,
+        with one estimate computed on the flipped image:
+    </p>
+    <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; overflow-x: auto;">
+        $$\epsilon = (\epsilon_1 + \text{flip}(\epsilon_2)) / 2$$
+    </div>
+
+    <div class="image-row">
+        <div class="image-container">
+            <img src="media/Part A/1-8-visual-anagram-1.png" alt="Visual anagram 1">
+            <p>Visual anagram 1: Different images when viewed upright vs upside down</p>
+        </div>
+        <div class="image-container">
+            <img src="media/Part A/1-8-visual-anagram-2.png" alt="Visual anagram 2">
+            <p>Visual anagram 2: Different images when viewed upright vs upside down</p>
+        </div>
+    </div>
+
+    <h4>1.9 Hybrid Images</h4>
+    <p>
+        Hybrid images combine low-frequency content from one prompt with high-frequency content from another.
+        By applying Gaussian blur (kernel size 33, sigma 2) to separate frequency bands of the noise estimates,
+        the resulting image appears different at various viewing distances.
+    </p>
+
+    <div class="image-row">
+        <div class="image-container">
+            <img src="media/Part A/1-9-hybrid-images-1.png" alt="Hybrid image 1">
+            <p>Hybrid image 1: Low and high frequency components combined</p>
+        </div>
+        <div class="image-container">
+            <img src="media/Part A/1-9-hybrid-images-2.png" alt="Hybrid image 2">
+            <p>Hybrid image 2: Low and high frequency components combined</p>
+        </div>
+    </div>
+
+    <h3>Bells and Whistles</h3>
+
+    <h4>Ambigram with Rotation</h4>
+    <p>
+        Ambigrams are artistic designs of words or symbols that maintain meaning when viewed from different orientations.
+        I extended the visual anagrams concept to 90° rotation, compositing noise estimates from images rotated at different angles.
+    </p>
+
+    <img src="media/Part A/bells-and-whistles-more-anagram-rotation.png" alt="Ambigram with rotation" class="example3">
+    <p class="caption">Rotational ambigram: different images when rotated 90°</p>
+
+    <h4>UCB Logo Image-to-Image Translation</h4>
+    <p>
+        I applied SDEdit to the UC Berkeley logo at various noise levels to test how the technique handles iconic symbols with strong geometric features.
+    </p>
+
+    <img src="media/Part A/bells-and-whistles-ucb-logo-i2i-translation.png" alt="UCB logo i2i translation" class="example3">
+    <p class="caption">UC Berkeley logo edited at different noise levels using SDEdit</p>
+
+    <h2>Part B: Training a Diffusion Model from Scratch</h2>
+
+    <h3>Overview</h3>
+    <p>
+        In Part B, I built and trained flow matching models from scratch on the MNIST dataset.
+        Starting with a basic single-step denoising UNet, I progressively advanced to iterative generation
+        with time conditioning and class conditioning, demonstrating how diffusion models learn to generate data.
+    </p>
+
+    <h3>Part 1: Single-Step Denoising UNet</h3>
+
+    <h4>1.1 UNet Architecture</h4>
+    <p>
+        I implemented a UNet architecture with the following components:
+    </p>
+    <ul>
+        <li>Downsampling blocks using Conv2d, BatchNorm2d, and GELU activations</li>
+        <li>Upsampling blocks using ConvTranspose2d</li>
+        <li>Skip connections between encoder and decoder</li>
+        <li>Hidden dimension D=128</li>
+    </ul>
+
+    <h4>1.2 Training the Denoiser</h4>
+
+    <h5>1.2.1 Training with Fixed Noise Level (σ=0.5)</h5>
+    <p>
+        I trained the UNet to denoise MNIST digits corrupted with Gaussian noise at σ=0.5.
+        The model was trained for 5 epochs using batch size 256 and Adam optimizer with learning rate 1e-4.
+    </p>
+
+    <img src="media/Part B/1-2-visualization-noising-process.png" alt="Noise visualization" class="example3">
+    <p class="caption">MNIST digits with different noise levels: σ = [0.0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0]</p>
+
+    <img src="media/Part B/1-2-1-training-loss-curve.png" alt="Training loss curve σ=0.5" class="example3">
+    <p class="caption">Training loss curve for single-step denoiser (σ=0.5)</p>
+
+    <img src="media/Part B/1-2-1-first-epoch-sample-results.png" alt="First epoch results" class="example3">
+    <p class="caption">Denoising results after epoch 1: Original (top), Noisy (middle), Denoised (bottom)</p>
+
+    <img src="media/Part B/1-2-1-5th-epoch-sample-results.png" alt="Fifth epoch results" class="example3">
+    <p class="caption">Denoising results after epoch 5: Original (top), Noisy (middle), Denoised (bottom)</p>
+
+    <h5>1.2.2 Out-of-Distribution Testing</h5>
+    <p>
+        I tested the denoiser trained on σ=0.5 with various noise levels to observe its generalization.
+        The model performs best at σ=0.5 (its training distribution) but shows degraded performance
+        at significantly different noise levels, demonstrating the importance of training distribution.
+    </p>
+
+    <img src="media/Part B/1-2-2-ood-testing.png" alt="Out-of-distribution testing" class="example3">
+    <p class="caption">Denoiser performance on test digits with varying noise levels [0.0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0]</p>
+
+    <h5>1.2.3 Denoising Pure Noise</h5>
+    <p>
+        I trained a denoiser on pure Gaussian noise (σ=1.0) to explore what patterns emerge.
+        Interestingly, the model generates blurry digit-like structures from pure noise.
+        This happens because when trained with MSE loss on pure noise, the optimal prediction
+        is the mean of the data distribution. Since the model cannot distinguish which specific digit
+        to generate from pure random noise, it learns to output an average representation of all MNIST digits,
+        resulting in these characteristic blurry images.
+    </p>
+
+    <img src="media/Part B/1-2-3-training-loss-curve.png" alt="Training loss curve σ=1.0" class="example3">
+    <p class="caption">Training loss curve for denoiser trained on pure noise (σ=1.0)</p>
+
+    <img src="media/Part B/1-2-3-first-epoch-sample-results.png" alt="Pure noise epoch 1" class="example3">
+    <p class="caption">Generation from pure noise after epoch 1</p>
+
+    <img src="media/Part B/1-2-3-5th-epoch-sample-results.png" alt="Pure noise epoch 5" class="example3">
+    <p class="caption">Generation from pure noise after epoch 5</p>
+
+    <h3>Part 2: Flow Matching Model</h3>
+
+    <h4>2.1-2.3 Time-Conditioned UNet</h4>
+    <p>
+        I extended the UNet to be conditioned on time by adding FCBlock operators that modulate the features
+        based on the timestep. This allows the model to learn different denoising strategies for different
+        noise levels in a single model.
+    </p>
+    <p>
+        The model was trained to predict the flow (velocity) that transforms noisy data to clean data.
+        Training configuration:
+    </p>
+    <ul>
+        <li>Hidden dimension D=64</li>
+        <li>Batch size 64</li>
+        <li>Adam optimizer with learning rate 1e-2</li>
+        <li>ExponentialLR scheduler with gamma=0.1^(1.0/num_epochs)</li>
+    </ul>
+
+    <img src="media/Part B/2-2-training-loss-curve.png" alt="Time-conditioned training loss" class="example3">
+    <p class="caption">Training loss curve for time-conditioned flow matching model</p>
+
+    <img src="media/Part B/2-3-first-epoch-sampling-results.png" alt="Time-conditioned epoch 1" class="example3">
+    <p class="caption">Sampling results after epoch 1</p>
+
+    <img src="media/Part B/2-3-5th-epoch-sampling-results.png" alt="Time-conditioned epoch 5" class="example3">
+    <p class="caption">Sampling results after epoch 5</p>
+
+    <img src="media/Part B/2-3-10th-epoch-sampling-results.png" alt="Time-conditioned epoch 10" class="example3">
+    <p class="caption">Sampling results after epoch 10</p>
+
+    <h4>2.4-2.6 Class-Conditioned UNet</h4>
+    <p>
+        I further extended the model to condition on digit class (0-9) using one-hot encoded vectors.
+        This allows controlled generation of specific digits. Key features:
+    </p>
+    <ul>
+        <li>Class conditioning via additional FCBlock pairs</li>
+        <li>Dropout (p=0.1) to drop class information for unconditional training</li>
+        <li>Classifier-free guidance with γ=5.0 during sampling</li>
+    </ul>
+    <p>
+        The classifier-free guidance formula combines conditional and unconditional predictions:
+    </p>
+    <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; overflow-x: auto;">
+        $$\epsilon = \epsilon_{\text{uncond}} + \gamma (\epsilon_{\text{cond}} - \epsilon_{\text{uncond}})$$
+    </div>
+
+    <img src="media/Part B/2-5-training-curve.png" alt="Class-conditioned training loss" class="example3">
+    <p class="caption">Training loss curve for class-conditioned flow matching model</p>
+
+    <img src="media/Part B/2-6-first-epoch-sampling-results.png" alt="Class-conditioned epoch 1" class="example3">
+    <p class="caption">Class-conditioned sampling results after epoch 1 (4 samples per digit 0-9)</p>
+
+    <img src="media/Part B/2-6-5th-epoch-sampling-results.png" alt="Class-conditioned epoch 5" class="example3">
+    <p class="caption">Class-conditioned sampling results after epoch 5 (4 samples per digit 0-9)</p>
+
+    <img src="media/Part B/2-6-10th-epoch-sampling-results.png" alt="Class-conditioned epoch 10" class="example3">
+    <p class="caption">Class-conditioned sampling results after epoch 10 (4 samples per digit 0-9 with CFG γ=5.0)</p>
+
+    <h4>Alternative: Training Without Learning Rate Scheduler</h4>
+    <p>
+        I also experimented with training without the ExponentialLR scheduler to compare performance.
+        By using a slightly lower fixed learning rate and training for more epochs,
+        comparable results can be achieved. The scheduler helps accelerate convergence in the early
+        stages while preventing overfitting later, but careful tuning of a fixed learning rate
+        can yield similar final performance with more stable training dynamics.
+    </p>
+
+    <img src="media/Part B/2-6-no-scheduler-training-curve.png" alt="Training without scheduler" class="example3">
+    <p class="caption">Training loss comparison: with scheduler vs without scheduler</p>
+
+    <img src="media/Part B/2-6-no-scheduler-first-epoch-sampling-results.png" alt="No scheduler epoch 1" class="example3">
+    <p class="caption">Sampling results without scheduler after epoch 1</p>
+
+    <img src="media/Part B/2-6-no-scheduler-10th-epoch-sampling-results.png" alt="No scheduler epoch 10" class="example3">
+    <p class="caption">Sampling results without scheduler after epoch 10</p>
+
+    <img src="media/Part B/2-6-no-scheduler-20th-epoch-sampling-results.png" alt="No scheduler epoch 20" class="example3">
+    <p class="caption">Sampling results without scheduler after epoch 20</p>
+
+    <h3>Part 3: Bells & Whistles</h3>
+
+    <h4>Experiment 1: Deeper Network Architecture with Extended Training</h4>
+    <p>
+        I hypothesized that the unconditional model's poor performance was due to insufficient model expressiveness,
+        particularly the lack of depth needed to represent the complex multimodal unconditional distribution.
+        To test this, I added additional (3×3 convolution, BatchNorm, GELU) layers between the second DownBlock
+        and the Flatten layer, varying the number of added layers from 2, 4, up to 128 layers.
+    </p>
+    <p>
+        I also extended training from 10 epochs to 100 epochs to allow the deeper model more time to converge.
+        The results show slightly improved sampling quality in the early stages of training, but an interesting
+        phenomenon occurs: the training loss begins to increase as training continues beyond a certain point.
+        Despite this, the quality of generated samples does not improve significantly with the deeper architecture.
+    </p>
+
+    <img src="media/Part B/bells-and-whistles-deeper-bottleneck-longer-training-training-curve.png" alt="Deeper model training curve" class="example3">
+    <p class="caption">Training loss curve for deeper bottleneck architecture over 100 epochs. Note the loss increase in later epochs.</p>
+
+    <img src="media/Part B/bells-and-whistles-deeper-bottleneck-longer-training-20-epoch-samples.png" alt="Deeper model 20 epoch samples" class="example3">
+    <p class="caption">Generated samples after 20 epochs with deeper architecture</p>
+
+    <img src="media/Part B/bells-and-whistles-deeper-bottleneck-longer-training-100-epoch-samples.png" alt="Deeper model 100 epoch samples" class="example3">
+    <p class="caption">Generated samples after 100 epochs with deeper architecture</p>
+
+    <h4>Experiment 2: Sinusoidal Timestep Embedding</h4>
+    <p>
+        The network's behavior varies significantly depending on the timestep, yet the baseline model
+        embeds this critical information as a single scalar value. I hypothesized that this limited
+        representation constrains the network's ability to adapt its behavior across different timesteps.
+    </p>
+    <p>
+        To address this, I replaced the scalar timestep embedding with sinusoidal positional encoding,
+        which provides a richer representation of time using multiple frequency components.
+        At the same epoch number, the model with sinusoidal embeddings generates more digit-like images
+        compared to the scalar embedding baseline, demonstrating that a richer temporal representation
+        helps the network learn more effectively across different noise levels.
+    </p>
+
+    <img src="media/Part B/bells-and-whistles-sinosoidal-timesteps-training-curve.png" alt="Sinusoidal embedding training curve" class="example3">
+    <p class="caption">Training loss curve comparison: scalar embedding vs sinusoidal embedding</p>
+
+    <img src="media/Part B/bells-and-whistles-sinosoidal-timesteps-epoch-20-samples.png" alt="Sinusoidal embedding samples" class="example3">
+    <p class="caption">Generated samples at epoch 20 with sinusoidal timestep embeddings</p>
+
+    <div class="nav">
+        <a href="../index.html">Back to Home</a>
+    </div>
+</body>
+</html>

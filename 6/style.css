@@ -1,0 +1,148 @@
+
+body {
+  background: white;
+  color: black;
+  font-family: 'Roboto', sans-serif;
+  text-align: center;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+h1 {
+  font-size: x-large;
+}
+
+h1 a {
+  font-size: medium;
+}
+
+h1 img {
+  float: left;
+  padding-right: 1em;
+}
+
+h2 {
+  margin: 5em 0 0 0;
+  font-size: x-large;
+  text-align: center;
+  font-variant: small-caps;
+}
+
+h2 b {
+  font-size: large;
+  font-variant: normal;
+  color: red;
+}
+    
+h2 i {
+  font-size: large;
+  font-variant: normal;
+  font-style: italic;
+  font-weight: normal;
+}
+
+h3 {
+  font-size: large;
+  font-variant: small-caps;
+  margin: 3em 0 0 0;
+  text-align: center;
+}
+
+h4 {
+  margin-top: 3em;
+  margin-bottom: 0.5em;
+  text-align: center;
+}
+
+p {
+  margin: 0 1em 0.5em 1em;
+}
+
+ul,
+ol {
+  margin: 0.5em 0 0.5em 1em;
+}
+
+li {
+  margin: 0;
+}
+
+img.example {
+  display: block;
+  margin: 1em auto;
+  width: 25%;
+}
+
+img.example3 {
+  display: block;
+  margin: 1em auto;
+  max-width: 60%;
+}
+
+img.example-medium {
+  display: block;
+  margin: 1em auto;
+  max-width: 50%;
+}
+
+img.example-small {
+  display: block;
+  margin: 1em auto;
+  max-width: 40%;
+}
+
+img.large-example {
+  display: block;
+  margin: 1em auto;
+  width: 50%;
+}
+
+iframe {
+  display: block;
+  margin: 1em auto;
+  max-width: 90%;
+}
+
+.flex-container div {
+  flex: 1;
+}
+
+code {
+  background: #f0f0f0;
+  padding: 0.1em 0.2em;
+  border-radius: 3px;
+}
+
+.image-row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.image-container {
+  flex: 1;
+  max-width: 30%;
+  text-align: center;
+}
+
+.image-container img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.image-container p {
+  margin: 10px 0 0 0;
+  font-size: 14px;
+}
+
+.caption {
+  text-align: center;
+  font-style: italic;
+  margin: 5px 0 40px 0;
+  font-size: 0.9em;
+  color: #666;
+}
